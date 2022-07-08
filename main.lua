@@ -212,8 +212,6 @@ local function play()
             end
         
             if not playing then break end
-    
-            print('still running')    
 
             swait(settings['Speed'])
         end
