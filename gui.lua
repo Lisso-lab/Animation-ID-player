@@ -1,3 +1,4 @@
+--!strict
 -- I know this UI sucks...
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -15,6 +16,64 @@ local PlayButton = Instance.new("TextButton")
 local UICorner_4 = Instance.new("UICorner")
 local SpeedInput = Instance.new("TextBox")
 local UICorner_5 = Instance.new("UICorner")
+
+local function make_draggable(gui)
+    local user_input_service: UserInputService = game:GetService("UserInputService")
+    local run_service: RunService = game:GetService("RunService")
+
+    local drag_start,last_goal_pos,start_pos,last_mouse_pos: UDim2
+    local dragging: boolean
+    local drag_input --Cant do enum in typechecking cuz exploits....
+
+    local drag_speed: number = 20
+
+    local function lerp(a: number, b: number, m: number): number
+    	return a + (b - a) * m
+    end
+
+    local function update(dt: number)
+    	if not start_pos then return end
+
+        if not dragging and last_goal_pos then
+            gui.Position = UDim2.new(start_pos.X.Scale,lerp(gui.Position.X.Offset,last_goal_pos.X.Offset,dt * drag_speed),start_pos.Y.Scale,lerp(gui.Position.Y.Offset,last_goal_pos.Y.Offset,dt * drag_speed))
+
+            return
+        end
+
+        local delta: Vector3 = (last_mouse_pos - user_input_service:GetMouseLocation())
+        local x_goal,y_goal: number = (start_pos.X.Offset - delta.X),(start_pos.Y.Offset - delta.Y)
+
+        last_goal_pos = UDim2.new(
+            start_pos.X.Scale, x_goal,
+            start_pos.Y.Scale, y_goal
+        )
+
+        gui.Position = UDim2.new(start_pos.X.Scale,lerp(gui.Position.X.Offset,x_goal,dt * drag_speed), start_pos.Y.Scale,lerp(gui.Position.Y.Offset,y_goal,dt * drag_speed))
+    end
+    
+    gui.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            drag_start = input.Position
+            start_pos = gui.Position
+            last_mouse_pos = user_input_service:GetMouseLocation()
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    gui.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            drag_input = input
+        end
+    end)
+
+    run_service["RenderStepped"]:Connect(update)
+end
 
 ScreenGui.Name = 'Animation ID Player'
 ScreenGui.Parent = game.CoreGui
@@ -136,5 +195,7 @@ SpeedInput.Parent = Main
 
 UICorner_5.CornerRadius = UDim.new(0, 3)
 UICorner_5.Parent = SpeedInput
+
+make_draggable(TextLabel)
 
 return TextLabel,IDinput,ModeInput,SpeedInput,PlayButton
