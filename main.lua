@@ -21,60 +21,6 @@ _G.run_player = false
 wait(.5)
 _G.run_player = true
 
-
-local function make_draggable(gui)
-    local dragging,drag_input,drag_start,start_pos,last_mouse_pos,last_goal_pos
-    
-    local drag_speed = 20
-
-    local function lerp(a, b, m)
-    	return a + (b - a) * m
-    end
-
-    local function update(dt)
-    	if not start_pos then return end
-
-        if not dragging and last_goal_pos then
-            gui.Position = UDim2.new(start_pos.X.Scale,lerp(gui.Position.X.Offset,last_goal_pos.X.Offset,dt * drag_speed),start_pos.Y.Scale,lerp(gui.Position.Y.Offset,last_goal_pos.Y.Offset,dt * drag_speed))
-
-            return 
-        end
-
-        local delta = (last_mouse_pos - user_input_service:GetMouseLocation())
-        local x_goal,y_goal = (start_pos.X.Offset - delta.X),(start_pos.Y.Offset - delta.Y)
-
-        last_goal_pos = UDim2.new(
-            start_pos.X.Scale, x_goal,
-            start_pos.Y.Scale, y_goal
-        )
-
-        gui.Position = UDim2.new(start_pos.X.Scale,lerp(gui.Position.X.Offset,x_goal,dt * drag_speed), start_pos.Y.Scale,lerp(gui.Position.Y.Offset,y_goal,dt * drag_speed))
-    end
-    
-    gui.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            drag_start = input.Position
-            start_pos = gui.Position
-            last_mouse_pos = user_input_service:GetMouseLocation()
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    
-    gui.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            drag_input = input
-        end
-    end)
-    
-    run_service['RenderStepped']:Connect(update)
-end
-
 local function get_animation(id)
     return game:GetObjects('rbxassetid://' ..id)[1]
 end
@@ -145,6 +91,7 @@ local function play()
     local animation = get_animation(settings['Animation ID'])
 
     local char = plr.Character or plr.CharacterAdded:wait()
+    local hum = char:FindFirstChildWhichIsA("Humanoid")
 
     local motors = {}
     
@@ -152,6 +99,14 @@ local function play()
         if v:IsA('Motor6D') then motors[#motors+1] = v end
     end
 
+    for _, anim_tracks in pairs(hum:GetPlayingAnimationTracks()) do
+        anim_tracks:Stop()
+    end
+    
+    do local animate: LocalScript = char:FindFirstChild("Animate")
+        if animate then animate.Disabled = true end
+    end
+    
     if playing then
         playing = false
         wait(.5)
@@ -217,8 +172,6 @@ local function play()
         end
     end
 end
-
-make_draggable(drag)
 
 id_input.FocusLost:Connect(on_focus_lost_id)
 method_input.FocusLost:Connect(on_focus_lost_method)
